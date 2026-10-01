@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@main
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@main
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@main
+
+      - name: Prepare Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Remove local-only Java path
+        run: sed -i '/^org\.gradle\.java\.home=/d' gradle.properties
+
+      - name: Decode signing keystore
+        run: echo "$SIGNING_KEY" | base64 -d > "keystore.jks"
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+
+      - name: Write signing properties
+        env:
+          LOCAL_PROPERTIES: ${{ secrets.keystore_properties }}
+        run: printf '%s' "$LOCAL_PROPERTIES" > keystore.properties
+
+      - name: Build
+        run: ./gradlew assembleRelease
+
+      - name: Upload
+        uses: actions/upload-artifact@main
+        with:
+          name: ota-pulse
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
