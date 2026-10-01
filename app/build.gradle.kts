@@ -24,7 +24,7 @@ android {
         create("release") {
             storeFile = rootProject.file("keystore.jks")
             storePassword = keystoreProperties["STORE_PASSWORD"] as? String ?: ""
-            keyAlias = "release"
+            keyAlias = "alias"
             keyPassword = keystoreProperties["KEY_PASSWORD"] as? String ?: ""
 
             enableV1Signing = true
